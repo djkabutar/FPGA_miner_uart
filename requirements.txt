@@ -1,0 +1,2 @@
+python-bitcoinrpc@git+https://github.com/djkabutar/python-bitcoinrpc
+pyserial

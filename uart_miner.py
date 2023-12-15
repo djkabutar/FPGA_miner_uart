@@ -2,15 +2,14 @@ from ctypes import cdll, c_ubyte, c_uint32, POINTER
 from codecs import decode
 from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
 from pprint import pprint
+import sys
 
 user = "djkabutar"
 password = "Devang110402"
 # host = "api2.bitcoin.cz"
 # host = "stratum.braiins.com"
-host = "192.168.29.43"
+host = "192.168.29.12"
 http_port = "8332"
-
-serial_port = "/dev/ttyUSB0"
 
 askrate = 5
 flag = 1
@@ -55,9 +54,10 @@ class GetWork():
     
     def getwork(self, *args):
         if not args:
-            return self.rpc_connection.batch_([["getwork"]])[0]
+            job = self.rpc_connection.batch_([["getwork"]])
         else:
-            return self.rpc_connection.batch_([["getwork", args, user]])[0]
+            job = self.rpc_connection.batch_([["getwork", args, user]])
+        return job[0]
 
 class Reader(Thread):
     def __init__(self):
@@ -97,13 +97,13 @@ class Writer(Thread):
     def run(self):
         global flag
         while True:
-            try:
-                work = bitcoin.getwork()
-                self.block = work['data']
-                self.midstate = work['midstate']
-                flag = 1
-            except Exception as e:
-                print("RPC getwork error: " + str(e))
+            # try:
+            work = bitcoin.getwork()
+            self.block = work['data']
+            self.midstate = work['midstate']
+            flag = 1
+            # except Exception as e:
+            #    print("RPC getwork error: " + str(e))
                 # In this case, keep crunching with the old data. It will get 
                 # stale at some point, but it's better than doing nothing.
 
@@ -126,7 +126,7 @@ class Writer(Thread):
                 golden.clear()
 
             # while flag:
-                # pass
+            #     pass
 
 class Submitter(Thread):
     def __init__(self, block, nonce):
@@ -184,30 +184,17 @@ golden = Event()
 
 bitcoin = GetWork()
 
-# headers = {"User-Agent": "poclbm/12.0", "Authorization": "Basic " + b64encode(b"djkabutar:Devang110402").decode('ascii'), "X-Mining-Extensions": 'hostlist midstate rollntime'}
-
-# connection = httplib2.HTTPConnectionWithTimeout(host, 8332, timeout=5)
-# postdata = {"method": "getwork", "params": [], "id":0}
-# postdata['params'] = [None] if None else []
-# connection.request('GET', '/', dumps(postdata), headers=headers)
-
-# response = connection.getresponse()
-# if response.status == httplib.UNAUTHORIZED:
-#     print("Authentication failed")
-
-# r = 3
-# while response.status == httplib.TEMPORARY_REDIRECT:
-#     response.read()
-#     url = response.getheader('Location', '')
-#     if r == 0 or url == '': raise HTTPException('Too much or bad redirects')
-#     connection.request('GET', url, headers=headers)
-#     response = connection.getresponse()
-#     print(loads(response.read()))
-#     r = r - 1
-
-# connection.close()
-
 results_queue = Queue()
+
+def print_usage():
+    print("./" + str(sys.argv[0]) + " <PORT>")
+
+# Check if enough arguments provided
+if len(sys.argv) != 2:
+    print_usage()
+    exit()
+
+serial_port = sys.argv[1]
 
 ser = Serial(serial_port, 2000000, timeout=askrate)
 
